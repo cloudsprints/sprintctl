@@ -1,4 +1,4 @@
-module github.com/morethancertified/sprintctl
+module github.com/cloudsprints/sprintctl
 
 go 1.23.0
 

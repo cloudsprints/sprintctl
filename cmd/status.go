@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/morethancertified/sprintctl/internal/mtcapi"
-	"github.com/morethancertified/sprintctl/internal/styles"
-	"github.com/morethancertified/sprintctl/internal/tui"
+	"github.com/cloudsprints/sprintctl/internal/mtcapi"
+	"github.com/cloudsprints/sprintctl/internal/styles"
+	"github.com/cloudsprints/sprintctl/internal/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

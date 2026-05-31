@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/morethancertified/sprintctl/internal/types"
+	"github.com/cloudsprints/sprintctl/internal/types"
 )
 
 // GetLabInfo fetches information about a lab

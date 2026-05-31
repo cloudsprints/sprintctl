@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"github.com/erikgeiser/promptkit/confirmation"
-	"github.com/morethancertified/sprintctl/internal/mtcapi"
-	"github.com/morethancertified/sprintctl/internal/styles"
-	"github.com/morethancertified/sprintctl/internal/tui"
-	"github.com/morethancertified/sprintctl/internal/types"
-	"github.com/morethancertified/sprintctl/internal/widgets"
+	"github.com/cloudsprints/sprintctl/internal/mtcapi"
+	"github.com/cloudsprints/sprintctl/internal/styles"
+	"github.com/cloudsprints/sprintctl/internal/tui"
+	"github.com/cloudsprints/sprintctl/internal/types"
+	"github.com/cloudsprints/sprintctl/internal/widgets"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

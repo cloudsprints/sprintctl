@@ -10,8 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/morethancertified/sprintctl/internal/styles"
-	"github.com/morethancertified/sprintctl/internal/types"
+	"github.com/cloudsprints/sprintctl/internal/styles"
+	"github.com/cloudsprints/sprintctl/internal/types"
 )
 
 // Note: dynamic sizing is handled via WindowSizeMsg; no fixed widths

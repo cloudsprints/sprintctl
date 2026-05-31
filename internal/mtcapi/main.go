@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/morethancertified/sprintctl/internal/auth"
-	"github.com/morethancertified/sprintctl/internal/types"
+	"github.com/cloudsprints/sprintctl/internal/auth"
+	"github.com/cloudsprints/sprintctl/internal/types"
 )
 
 type MtcApiClient struct {

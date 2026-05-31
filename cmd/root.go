@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/morethancertified/sprintctl/internal/styles"
+	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

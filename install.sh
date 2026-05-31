@@ -3,7 +3,7 @@
 # sprintctl installer script
 #
 # This script is designed to be run via curl:
-#   curl -fsSL https://raw.githubusercontent.com/morethancertified/sprintctl/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/cloudsprints/sprintctl/main/install.sh | sh
 #
 # It automatically detects the OS and architecture, then downloads the
 # appropriate binary from the latest GitHub release.
@@ -11,7 +11,7 @@
 set -e
 
 # --- Configuration ---
-REPO="morethancertified/sprintctl"
+REPO="cloudsprints/sprintctl"
 CLI_NAME="sprintctl"
 INSTALL_DIR="/usr/local/bin"
 

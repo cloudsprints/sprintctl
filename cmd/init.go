@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/morethancertified/sprintctl/internal/mtcapi"
-	"github.com/morethancertified/sprintctl/internal/types"
+	"github.com/cloudsprints/sprintctl/internal/mtcapi"
+	"github.com/cloudsprints/sprintctl/internal/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
