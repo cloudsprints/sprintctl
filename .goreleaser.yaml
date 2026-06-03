@@ -18,7 +18,7 @@ archives:
   - format: binary
 # brews:
 #   - tap:
-#     owner: morethancertified
+#     owner: cloudsprints
 #     name: sprintctl-tap 
 changelog:
   sort: asc

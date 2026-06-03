@@ -20,7 +20,7 @@ run:
   go run main.go
 
 install:
-  go install 'github.com/morethancertified/sprintctl'
+  go install 'github.com/cloudsprints/sprintctl'
   echo "sprintctl installed"
 
 uninstall:
