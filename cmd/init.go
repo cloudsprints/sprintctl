@@ -15,10 +15,10 @@ import (
 )
 
 var initCmd = &cobra.Command{
-	Use:     "init <lesson-token>",
+	Use:     "init [lesson-token]",
 	Short:   "Initialize a lab environment",
 	Args:    cobra.MaximumNArgs(1),
-	Example: "sprintctl init cm4ppz694200blze51ts1234\nsprintctl init --admin cmj3wql250016ru5xw0vifo2b\nsprintctl init --project cmj3abc123  # admin only, pulls all labs",
+	Example: "sprintctl init                        # auto-detect active lab\nsprintctl init cm4ppz694200blze51ts1234  # explicit lesson token\nsprintctl init --admin cmj3wql250016ru5xw0vifo2b\nsprintctl init --project cmj3abc123      # admin only, pulls all labs",
 	Run: func(cmd *cobra.Command, args []string) {
 		publicOnly, _ := cmd.Flags().GetBool("public-only")
 		adminMode, _ := cmd.Flags().GetBool("admin")
@@ -32,7 +32,24 @@ var initCmd = &cobra.Command{
 			return
 		}
 
-		// Single lab mode requires a lesson token
+		// Single lab mode - auto-detect or use provided token
+		if len(args) == 0 && !adminMode {
+			fmt.Println("No lesson token provided. Fetching most recently accessed lab...")
+			activeLesson, err := apiClient.GetActiveLesson()
+			if err != nil {
+				fmt.Println("Error fetching active lab:", err)
+				fmt.Println("\nPlease open a lab in the UI first, or provide a lesson token explicitly:")
+				fmt.Println("  sprintctl init <lesson-token>")
+				return
+			}
+			args = []string{activeLesson.LessonToken}
+			fmt.Printf("\n📚 Auto-detected lab: %s\n", activeLesson.Title)
+			if activeLesson.CourseTitle != "" {
+				fmt.Printf("   Course: %s\n", activeLesson.CourseTitle)
+			}
+			fmt.Println()
+		}
+
 		if len(args) == 0 {
 			fmt.Println("Error: lesson-token is required (or use --project)")
 			fmt.Println("Usage: sprintctl init <lesson-token>")
