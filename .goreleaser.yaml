@@ -14,11 +14,12 @@ builds:
       - arm64
     ldflags:
       - -X github.com/cloudsprints/sprintctl/cmd.Version={{.Version}}
+      - -X github.com/cloudsprints/sprintctl/internal/auth.GraderSecret={{.Env.GRADER_SECRET}}
 archives:
   - format: binary
 # brews:
 #   - tap:
-#     owner: morethancertified
+#     owner: cloudsprints
 #     name: sprintctl-tap 
 changelog:
   sort: asc

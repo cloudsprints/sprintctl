@@ -8,6 +8,7 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/auth"
 	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var loginCmd = &cobra.Command{
@@ -48,10 +49,15 @@ You can provide your email as an argument or enter it when prompted.`,
 			return
 		}
 		
+		// Derive the CLI OTP proxy URL from the configured api base URL
+		apiBase := viper.GetString("api_base_url")
+		appRoot := strings.TrimSuffix(apiBase, "/api/v1")
+		proxyURL := appRoot + "/api/auth/cli-otp"
+
 		// Request OTP
 		fmt.Println(styles.InfoStyle.Render(" SENDING OTP "))
 		fmt.Println(styles.BoxStyle.Render(fmt.Sprintf("Sending one-time password to: %s", email)))
-		err := auth.LoginWithOTP(email)
+		err := auth.LoginWithOTP(email, proxyURL)
 		if err != nil {
 			fmt.Println(styles.ErrorStyle.Render(" OTP ERROR "), err)
 			return

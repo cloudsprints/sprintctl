@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"runtime"
 
 	"github.com/creativeprojects/go-selfupdate"
@@ -12,7 +11,7 @@ import (
 )
 
 func update(version string) error {
-	latest, found, err := selfupdate.DetectLatest(context.Background(), selfupdate.ParseSlug("morethancertified/sprintctl"))
+	latest, found, err := selfupdate.DetectLatest(context.Background(), selfupdate.ParseSlug("cloudsprints/sprintctl"))
 	if err != nil {
 		return fmt.Errorf("error occurred while detecting version: %w", err)
 	}
@@ -21,7 +20,7 @@ func update(version string) error {
 	}
 
 	if latest.LessOrEqual(version) {
-		log.Printf("Current version (%s) is the latest", version)
+		fmt.Printf("✅ sprintctl is already up to date (version %s)\n", version)
 		return nil
 	}
 
@@ -32,7 +31,7 @@ func update(version string) error {
 	if err := selfupdate.UpdateTo(context.Background(), latest.AssetURL, latest.AssetName, exe); err != nil {
 		return fmt.Errorf("error occurred while updating binary: %w", err)
 	}
-	log.Printf("Successfully updated to version %s", latest.Version())
+	fmt.Printf("🎉 Successfully updated sprintctl to version %s\n", latest.Version())
 	return nil
 }
 
@@ -40,7 +39,9 @@ var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update sprintctl to the latest version",
 	Run: func(cmd *cobra.Command, args []string) {
-		update(Version)
+		if err := update(Version); err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 

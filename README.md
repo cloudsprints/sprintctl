@@ -1,6 +1,6 @@
 # SprintCTL
 
-A command-line interface tool for validating MoreThanCertified lesson tasks locally.
+A command-line interface tool for validating CloudSprints lesson tasks locally.
 
 ## Features
 
@@ -14,13 +14,13 @@ Currently, sprintctl is only supported on macOS and Linux (including linux via W
 ### With installer script
 
 ```bash
-curl -s https://app.morethancertified.com/install.sh | sh
+curl -s https://app.cloudsprints.com/install.sh | sh
 ```
 
 ### With Go
 
 ```bash
-go install github.com/morethancertified/sprintctl
+go install github.com/cloudsprints/sprintctl
 ```
 
 ## Usage
@@ -88,11 +88,11 @@ MIT License - See LICENSE file for details.
 
 ## Contributing
 
-1. Clone the repository (`git clone https://github.com/morethancertified/sprintctl`)
+1. Clone the repository (`git clone https://github.com/cloudsprints/sprintctl`)
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
-5. [Open a Pull Request](https://github.com/morethancertified/sprintctl/compare)
+5. [Open a Pull Request](https://github.com/cloudsprints/sprintctl/compare)
 
 ## Dependencies
 
