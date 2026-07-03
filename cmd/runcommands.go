@@ -13,7 +13,8 @@ import (
 
 // commandTimeout bounds each validation command so a hung command (e.g. a CLI
 // waiting on credentials or network) can't stall the submission forever.
-const commandTimeout = 120 * time.Second
+// Variable rather than const so tests can shorten it.
+var commandTimeout = 120 * time.Second
 
 // runValidationCommand executes a single validation command with a live
 // spinner and a timeout, returning the captured result.
