@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/creativeprojects/go-selfupdate"
@@ -29,6 +31,12 @@ func update(version string) error {
 		return errors.New("could not locate executable path")
 	}
 	if err := selfupdate.UpdateTo(context.Background(), latest.AssetURL, latest.AssetName, exe); err != nil {
+		if errors.Is(err, os.ErrPermission) {
+			return fmt.Errorf("permission denied writing to %s.\n"+
+				"sprintctl is installed in a directory your user can't write to. Re-run the update with elevated privileges:\n\n"+
+				"    sudo sprintctl update\n",
+				filepath.Dir(exe))
+		}
 		return fmt.Errorf("error occurred while updating binary: %w", err)
 	}
 	fmt.Printf("🎉 Successfully updated sprintctl to version %s\n", latest.Version())
