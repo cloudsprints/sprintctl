@@ -2,15 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"os/exec"
-	"strings"
 
-	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/cloudsprints/sprintctl/internal/mtcapi"
 	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/cloudsprints/sprintctl/internal/tui"
 	"github.com/cloudsprints/sprintctl/internal/types"
-	"github.com/cloudsprints/sprintctl/internal/widgets"
+	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -20,7 +17,7 @@ var gradeCmd = &cobra.Command{
 	Use:     "grade [lesson-token]",
 	Short:   "Grade a lesson (or use --admin for direct lesson grading)",
 	Args:    cobra.MaximumNArgs(1),
-	Example: "mtc grade\nmtc grade cm4ppz694200blze51ts1234\nmtc grade --admin cmj3wql250016ru5xw0vifo2b",
+	Example: "sprintctl grade\nsprintctl grade cm4ppz694200blze51ts1234\nsprintctl grade --admin cmj3wql250016ru5xw0vifo2b",
 	Run: func(cmd *cobra.Command, args []string) {
 		adminMode, _ := cmd.Flags().GetBool("admin")
 
@@ -76,28 +73,12 @@ func runAdminGrading(lessonID string) {
 		return
 	}
 
-	widgets.RunProgressBar()
+	fmt.Println()
 
 	// Run CLI commands
 	cliCommandResults := []types.CLICommandResult{}
-	for _, command := range lessonInfo.CliCommands {
-		cliCommandResult := types.CLICommandResult{
-			Command: command,
-		}
-
-		cmd := exec.Command("sh", "-c", "LANG=en_US.UTF-8 "+command)
-
-		b, err := cmd.Output()
-		if ee, ok := err.(*exec.ExitError); ok {
-			cliCommandResult.ExitCode = ee.ExitCode()
-			cliCommandResult.Stderr = strings.TrimRight(string(ee.Stderr), "\n\t\r")
-		} else if err != nil {
-			cliCommandResult.ExitCode = -69
-		} else {
-			cliCommandResult.Stdout = strings.TrimRight(string(b), "\n\t\r")
-		}
-
-		cliCommandResults = append(cliCommandResults, cliCommandResult)
+	for i, command := range lessonInfo.CliCommands {
+		cliCommandResults = append(cliCommandResults, runValidationCommand(command, i, len(lessonInfo.CliCommands)))
 	}
 
 	// Submit for grading via admin endpoint
@@ -136,7 +117,7 @@ func runAdminGrading(lessonID string) {
 	fmt.Println()
 
 	// Launch TUI for interactive grading report (same as regular grade)
-	_, err = tui.RunGradingReport(tasks, lessonID)
+	shouldResubmit, err := tui.RunGradingReport(tasks, lessonID)
 
 	// Clear screen after TUI exits
 	fmt.Print("\033[H\033[2J")
@@ -146,6 +127,10 @@ func runAdminGrading(lessonID string) {
 		fmt.Println(styles.WarningStyle.Render(" TUI ERROR "))
 		fmt.Printf("Error: %v\n\n", err)
 		printAdminTasksTable(tasks)
+	} else if shouldResubmit {
+		fmt.Println(styles.InfoStyle.Render(" REGRADING LESSON "))
+		fmt.Println()
+		runAdminGrading(lessonID)
 	}
 }
 

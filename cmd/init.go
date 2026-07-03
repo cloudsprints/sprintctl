@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/cloudsprints/sprintctl/internal/mtcapi"
 	"github.com/cloudsprints/sprintctl/internal/types"
@@ -127,52 +128,61 @@ var initCmd = &cobra.Command{
 		// Download files
 		fmt.Printf("Downloading %d files...\n", len(files))
 
-		for i, file := range files {
-			// Determine the target path
-			var filePath string
-
-			// If it's a public file, extract it to the root of the lab directory
-			if strings.HasPrefix(file.Path, "public/") {
-				// Remove the "public/" prefix
-				targetPath := strings.TrimPrefix(file.Path, "public/")
-				filePath = filepath.Join(labDir, targetPath)
-				fmt.Printf("[%d/%d] Downloading %s to %s...\n", i+1, len(files), file.Path, targetPath)
-			} else {
-				// Keep the original path for other files
-				filePath = filepath.Join(labDir, file.Path)
-				fmt.Printf("[%d/%d] Downloading %s...\n", i+1, len(files), file.Path)
-			}
-
-			// Create subdirectories if needed
-			fileDir := filepath.Dir(filePath)
-			if err := os.MkdirAll(fileDir, 0755); err != nil {
-				fmt.Printf("Error creating directory %s: %s\n", fileDir, err)
-				continue
-			}
-
-			// Download file
-			if err := downloadFile(file.URL, filePath); err != nil {
-				fmt.Printf("Error downloading %s: %s\n", file.Path, err)
-				continue
-			}
+		failed := downloadLabFiles(files, labDir)
+		if failed > 0 {
+			fmt.Printf("\n%d of %d files failed to download.\n", failed, len(files))
+			fmt.Println("Re-run 'sprintctl init' to retry.")
+			return
 		}
-
-		// No need to save lab metadata
 
 		fmt.Printf("\nLab initialized successfully in %s\n", labDir)
 		fmt.Println("You can now cd into the directory and start working on the lab.")
 	},
 }
 
-func downloadFile(url, filePath string) error {
-	// Create the file
-	out, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
+// downloadLabFiles downloads files concurrently into labDir and returns the
+// number of failures. Files under "public/" are extracted to the lab root.
+func downloadLabFiles(files []types.LabFile, labDir string) int {
+	const maxConcurrent = 6
 
-	// Get the data
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxConcurrent)
+	var mu sync.Mutex
+	failed := 0
+
+	for _, file := range files {
+		targetPath := strings.TrimPrefix(file.Path, "public/")
+		filePath := filepath.Join(labDir, targetPath)
+
+		wg.Add(1)
+		go func(file types.LabFile, filePath string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			err := os.MkdirAll(filepath.Dir(filePath), 0755)
+			if err == nil {
+				err = downloadFile(file.URL, filePath)
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				failed++
+				fmt.Printf("✗ %s: %s\n", file.Path, err)
+			} else {
+				fmt.Printf("✓ %s\n", file.Path)
+			}
+		}(file, filePath)
+	}
+	wg.Wait()
+
+	return failed
+}
+
+func downloadFile(url, filePath string) error {
+	// Get the data before touching the destination so a failed request
+	// doesn't leave an empty file behind
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -184,7 +194,14 @@ func downloadFile(url, filePath string) error {
 		return fmt.Errorf("bad status: %s", resp.Status)
 	}
 
-	// Writer the body to file
+	// Create the file
+	out, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	return err
 }

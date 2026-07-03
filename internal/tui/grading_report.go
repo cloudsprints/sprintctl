@@ -75,6 +75,8 @@ type model struct {
 	showingExplanation bool
 	lessonToken        string
 	resubmitting       bool
+	canResubmit        bool
+	renderer           *glamour.TermRenderer
 	width              int
 	height             int
 	topHeight          int
@@ -149,6 +151,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.viewport.Width = viewportWidth
 		m.viewport.Height = m.bottomHeight
+
+		// Rebuild the markdown renderer for the new width and re-wrap content
+		m.renderer = newMarkdownRenderer(viewportWidth)
+		m.updateDetail()
 		return m, nil
 
 	case tea.KeyMsg:
@@ -164,9 +170,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "r":
-			// Resubmit lesson
-			m.resubmitting = true
-			return m, tea.Quit
+			// Resubmit lesson (only when the calling command supports it)
+			if m.canResubmit {
+				m.resubmitting = true
+				return m, tea.Quit
+			}
+			return m, nil
 
 		case "j", "down":
 			// Always navigate task list - AI feedback updates automatically
@@ -209,6 +218,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// newMarkdownRenderer builds a glamour renderer for the given viewport width.
+// Renderer construction is expensive, so it is cached on the model and only
+// rebuilt on resize rather than on every navigation keypress.
+func newMarkdownRenderer(width int) *glamour.TermRenderer {
+	if width <= 0 {
+		width = 80
+	}
+	renderer, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(width-4),
+	)
+	if err != nil {
+		return nil
+	}
+	return renderer
+}
+
 func (m *model) updateDetail() {
 	if len(m.list.Items()) == 0 {
 		m.viewport.SetContent("")
@@ -233,25 +259,16 @@ func (m *model) updateDetail() {
 
 	if m.showingExplanation {
 		if task.AiExplanation != "" {
-			// Render markdown with glamour for proper code highlighting
-			renderWidth := m.viewport.Width
-			if renderWidth <= 0 {
-				renderWidth = 80
-			}
-			renderer, err := glamour.NewTermRenderer(
-				glamour.WithAutoStyle(),
-				glamour.WithWordWrap(renderWidth-4),
-			)
-			if err == nil {
-				renderedContent, err := renderer.Render(task.AiExplanation)
+			rendered := false
+			if m.renderer != nil {
+				renderedContent, err := m.renderer.Render(task.AiExplanation)
 				if err == nil {
 					content = lipgloss.NewStyle().Bold(true).Render("🤖 AI Feedback:") + "\n" + renderedContent
-				} else {
-					// Fallback to plain text if rendering fails
-					content = lipgloss.NewStyle().Bold(true).Render("🤖 AI Feedback:") + "\n\n" + task.AiExplanation
+					rendered = true
 				}
-			} else {
-				// Fallback to plain text if renderer creation fails
+			}
+			if !rendered {
+				// Fallback to plain text if rendering fails
 				content = lipgloss.NewStyle().Bold(true).Render("🤖 AI Feedback:") + "\n\n" + task.AiExplanation
 			}
 		} else {
@@ -289,10 +306,14 @@ func (m model) View() string {
 		Render(strings.Repeat("─", separatorWidth))
 
 	// Footer with instructions
-	footerText := "[j/k] Navigate  [Enter] Toggle feedback  [r] Resubmit  [q] Quit"
+	footerText := "[j/k] Navigate  [Enter] Toggle feedback  "
 	if m.showingExplanation {
-		footerText = "[j/k] Navigate  [PgUp/PgDn] Scroll feedback  [Enter] Hide  [r] Resubmit  [q] Quit"
+		footerText = "[j/k] Navigate  [PgUp/PgDn] Scroll feedback  [Enter] Hide  "
 	}
+	if m.canResubmit {
+		footerText += "[r] Resubmit  "
+	}
+	footerText += "[q] Quit"
 	footer := lipgloss.NewStyle().
 		Foreground(styles.Gray).
 		Italic(true).
@@ -337,9 +358,11 @@ func RunGradingReport(tasks []types.Task, lessonToken string) (bool, error) {
 		list:        l,
 		tasks:       tasks,
 		lessonToken: lessonToken,
+		canResubmit: lessonToken != "",
 	}
-	// Initial viewport; will be resized on WindowSizeMsg
+	// Initial viewport and renderer; both are resized on WindowSizeMsg
 	m.viewport = viewport.New(80, 10)
+	m.renderer = newMarkdownRenderer(80)
 	m.updateDetail()
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/erikgeiser/promptkit/textinput"
 	"github.com/cloudsprints/sprintctl/internal/auth"
 	"github.com/cloudsprints/sprintctl/internal/styles"
+	"github.com/erikgeiser/promptkit/textinput"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -18,15 +18,22 @@ var loginCmd = &cobra.Command{
 You can provide your email as an argument or enter it when prompted.`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// Check if already authenticated before asking for anything
+		if auth.IsAuthenticated() {
+			fmt.Println(styles.WarningStyle.Render(" ALREADY AUTHENTICATED "))
+			fmt.Println(styles.BoxStyle.Render("You are already authenticated!\nRun 'sprintctl logout' to sign out first."))
+			return
+		}
+
 		var email string
-		
+
 		// Get email from args or prompt
 		if len(args) > 0 {
 			email = args[0]
 		} else {
 			input := textinput.New("Enter your email:")
 			input.Placeholder = "user@example.com"
-			
+
 			var err error
 			email, err = input.RunPrompt()
 			if err != nil {
@@ -34,21 +41,14 @@ You can provide your email as an argument or enter it when prompted.`,
 				return
 			}
 		}
-		
+
 		// Validate email format (basic check)
 		if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
 			fmt.Println(styles.ErrorStyle.Render(" INVALID EMAIL "))
 			fmt.Println(styles.BoxStyle.Render("Please enter a valid email address"))
 			return
 		}
-		
-		// Check if already authenticated
-		if auth.IsAuthenticated() {
-			fmt.Println(styles.WarningStyle.Render(" ALREADY AUTHENTICATED "))
-			fmt.Println(styles.BoxStyle.Render("You are already authenticated!\nRun 'sprintctl logout' to sign out first."))
-			return
-		}
-		
+
 		// Derive the CLI OTP proxy URL from the configured api base URL
 		apiBase := viper.GetString("api_base_url")
 		appRoot := strings.TrimSuffix(apiBase, "/api/v1")
@@ -62,20 +62,20 @@ You can provide your email as an argument or enter it when prompted.`,
 			fmt.Println(styles.ErrorStyle.Render(" OTP ERROR "), err)
 			return
 		}
-		
+
 		fmt.Println(styles.SuccessStyle.Render(" OTP SENT! "))
 		fmt.Println(styles.BoxStyle.Render("Check your email for the 6-digit verification code"))
-		
+
 		// Prompt for OTP code
 		codeInput := textinput.New("Enter the 6-digit code from your email:")
 		codeInput.Placeholder = "123456"
-		
+
 		code, err := codeInput.RunPrompt()
 		if err != nil {
 			fmt.Printf("Error getting code: %v\n", err)
 			return
 		}
-		
+
 		// Verify OTP
 		fmt.Println(styles.InfoStyle.Render(" VERIFYING CODE "))
 		err = auth.VerifyOTP(email, code)
@@ -83,7 +83,7 @@ You can provide your email as an argument or enter it when prompted.`,
 			fmt.Println(styles.ErrorStyle.Render(" AUTHENTICATION FAILED "), err)
 			return
 		}
-		
+
 		fmt.Println(styles.SuccessStyle.Render(" AUTHENTICATION SUCCESS! "))
 		fmt.Println(styles.BoxStyle.Render("You can now use sprintctl to submit lessons and access your data.\n\nNext steps:\n• Run 'sprintctl submit <lesson-token>' to grade a lesson\n• Run 'sprintctl status' to view cached results"))
 	},
