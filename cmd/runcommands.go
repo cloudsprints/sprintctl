@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/charmbracelet/bubbles/progress"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/cloudsprints/sprintctl/internal/types"
 )
 
@@ -16,13 +18,10 @@ import (
 // Variable rather than const so tests can shorten it.
 var commandTimeout = 120 * time.Second
 
-// runValidationCommand executes a single validation command with a live
-// spinner and a timeout, returning the captured result.
-func runValidationCommand(command string, idx, total int) types.CLICommandResult {
+// executeCommand runs a single validation command with a timeout and returns
+// the captured result.
+func executeCommand(command string) types.CLICommandResult {
 	result := types.CLICommandResult{Command: command}
-
-	label := fmt.Sprintf("[%d/%d] Running validation…", idx+1, total)
-	stop := startSpinner(label)
 
 	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 	defer cancel()
@@ -42,42 +41,141 @@ func runValidationCommand(command string, idx, total int) types.CLICommandResult
 		result.Stdout = strings.TrimRight(string(b), "\n\t\r")
 	}
 
-	stop(result.ExitCode == 0)
 	return result
 }
 
-// startSpinner renders an animated spinner next to label until the returned
-// stop function is called, which replaces it with a ✓ or ✗ marker.
-func startSpinner(label string) func(ok bool) {
-	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-	done := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(1)
+// commandFailed reports whether a validation command result should be treated
+// as a failure: non-zero exit code, or output containing "validation failed"
+// (from lab commands of the form `<check> || echo "validation failed"`).
+func commandFailed(r types.CLICommandResult) bool {
+	return r.ExitCode != 0 || strings.Contains(r.Stdout, "validation failed")
+}
 
-	go func() {
-		defer wg.Done()
-		ticker := time.NewTicker(100 * time.Millisecond)
-		defer ticker.Stop()
-		i := 0
-		fmt.Printf("\r\033[2K%s %s", frames[0], label)
-		for {
-			select {
-			case <-done:
-				return
-			case <-ticker.C:
-				i++
-				fmt.Printf("\r\033[2K%s %s", frames[i%len(frames)], label)
+// runCommandsWithProgress executes commands sequentially while animating the
+// gradient progress bar, advancing it as each command actually completes.
+// It returns the collected results and whether the user aborted with ctrl+c.
+// When stopOnFailure is true, execution stops at the first failing command.
+func runCommandsWithProgress(commands []string, stopOnFailure bool) ([]types.CLICommandResult, bool) {
+	if len(commands) == 0 {
+		return nil, false
+	}
+
+	m := progressRunModel{
+		progress:      progress.New(progress.WithGradient("#00f1ff", "#ff00ed")),
+		commands:      commands,
+		stopOnFailure: stopOnFailure,
+	}
+
+	final, err := tea.NewProgram(m).Run()
+	if err != nil {
+		// No usable terminal for the progress bar - run the commands plainly
+		results := []types.CLICommandResult{}
+		for _, command := range commands {
+			result := executeCommand(command)
+			results = append(results, result)
+			if stopOnFailure && commandFailed(result) {
+				break
 			}
 		}
-	}()
-
-	return func(ok bool) {
-		close(done)
-		wg.Wait()
-		icon := "✓"
-		if !ok {
-			icon = "✗"
-		}
-		fmt.Printf("\r\033[2K%s %s\n", icon, label)
+		return results, false
 	}
+
+	fm := final.(progressRunModel)
+	return fm.results, fm.aborted
+}
+
+const (
+	progressPadding  = 2
+	progressMaxWidth = 80
+)
+
+var progressLabelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262"))
+
+type cmdDoneMsg struct{ result types.CLICommandResult }
+type progressFinishedMsg struct{}
+
+type progressRunModel struct {
+	progress      progress.Model
+	commands      []string
+	results       []types.CLICommandResult
+	stopOnFailure bool
+	aborted       bool
+	done          bool
+	failed        bool
+}
+
+func execCommandCmd(command string) tea.Cmd {
+	return func() tea.Msg {
+		return cmdDoneMsg{result: executeCommand(command)}
+	}
+}
+
+func (m progressRunModel) Init() tea.Cmd {
+	return execCommandCmd(m.commands[0])
+}
+
+func (m progressRunModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "ctrl+c" {
+			m.aborted = true
+			return m, tea.Quit
+		}
+		return m, nil
+
+	case tea.WindowSizeMsg:
+		m.progress.Width = msg.Width - progressPadding*2 - 4
+		if m.progress.Width > progressMaxWidth {
+			m.progress.Width = progressMaxWidth
+		}
+		return m, nil
+
+	case cmdDoneMsg:
+		m.results = append(m.results, msg.result)
+		percent := float64(len(m.results)) / float64(len(m.commands))
+		cmds := []tea.Cmd{m.progress.SetPercent(percent)}
+
+		if commandFailed(msg.result) {
+			m.failed = true
+		}
+
+		if (m.failed && m.stopOnFailure) || len(m.results) == len(m.commands) {
+			m.done = true
+			// Let the bar animate to its final position before quitting
+			cmds = append(cmds, tea.Tick(600*time.Millisecond, func(time.Time) tea.Msg {
+				return progressFinishedMsg{}
+			}))
+		} else {
+			cmds = append(cmds, execCommandCmd(m.commands[len(m.results)]))
+		}
+		return m, tea.Batch(cmds...)
+
+	case progressFinishedMsg:
+		return m, tea.Quit
+
+	case progress.FrameMsg:
+		progressModel, cmd := m.progress.Update(msg)
+		m.progress = progressModel.(progress.Model)
+		return m, cmd
+
+	default:
+		return m, nil
+	}
+}
+
+func (m progressRunModel) View() string {
+	pad := strings.Repeat(" ", progressPadding)
+
+	label := fmt.Sprintf("Validating… (%d/%d)", len(m.results), len(m.commands))
+	if m.done {
+		if m.failed {
+			label = fmt.Sprintf("Validation stopped (%d/%d)", len(m.results), len(m.commands))
+		} else {
+			label = fmt.Sprintf("Validation complete (%d/%d)", len(m.results), len(m.commands))
+		}
+	}
+
+	return "\n" +
+		pad + m.progress.View() + "\n\n" +
+		pad + progressLabelStyle.Render(label) + "\n"
 }

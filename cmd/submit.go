@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/cloudsprints/sprintctl/internal/mtcapi"
 	"github.com/cloudsprints/sprintctl/internal/styles"
@@ -90,20 +89,14 @@ func runSubmissionFlow(lessonToken string, lesson types.Lesson, apiClient *mtcap
 		return
 	}
 
-	fmt.Println()
+	cliCommandResults, aborted := runCommandsWithProgress(lesson.CliCommands, true)
+	if aborted {
+		fmt.Println(styles.WarningStyle.Render(" ABORTED "))
+		return
+	}
 
-	cliCommandResults := []types.CLICommandResult{}
-	for i, command := range lesson.CliCommands {
-		cliCommandResult := runValidationCommand(command, i, len(lesson.CliCommands))
-		cliCommandResults = append(cliCommandResults, cliCommandResult)
-
-		// Check if command failed - abort submission if:
-		// 1. Non-zero exit code, OR
-		// 2. Output contains "validation failed" (from || echo "validation failed")
-		validationFailed := cliCommandResult.ExitCode != 0 ||
-			strings.Contains(cliCommandResult.Stdout, "validation failed")
-
-		if validationFailed {
+	for _, cliCommandResult := range cliCommandResults {
+		if commandFailed(cliCommandResult) {
 			fmt.Println("\n" + styles.ErrorStyle.Render(" VALIDATION FAILED "))
 			fmt.Printf("Command exited with code %d\n\n", cliCommandResult.ExitCode)
 			if cliCommandResult.Stderr != "" {

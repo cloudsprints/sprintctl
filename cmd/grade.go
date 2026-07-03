@@ -73,12 +73,11 @@ func runAdminGrading(lessonID string) {
 		return
 	}
 
-	fmt.Println()
-
 	// Run CLI commands
-	cliCommandResults := []types.CLICommandResult{}
-	for i, command := range lessonInfo.CliCommands {
-		cliCommandResults = append(cliCommandResults, runValidationCommand(command, i, len(lessonInfo.CliCommands)))
+	cliCommandResults, aborted := runCommandsWithProgress(lessonInfo.CliCommands, false)
+	if aborted {
+		fmt.Println(styles.WarningStyle.Render(" ABORTED "))
+		return
 	}
 
 	// Submit for grading via admin endpoint
