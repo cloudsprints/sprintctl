@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/cloudsprints/sprintctl/internal/auth"
 	"github.com/cloudsprints/sprintctl/internal/types"
+	"github.com/go-resty/resty/v2"
 )
 
 type MtcApiClient struct {
@@ -25,11 +25,12 @@ func New(baseURL string) *MtcApiClient {
 	}
 }
 
-// ensureAuthenticated checks for a valid token and sets it on the request
+// ensureAuthenticated checks for a valid token and sets it on the request,
+// refreshing the session first if the stored token has expired
 func (c *MtcApiClient) ensureAuthenticated(req *resty.Request) error {
-	token, err := auth.GetToken()
+	token, err := auth.AccessToken()
 	if err != nil {
-		return fmt.Errorf("authentication required: please run 'sprintctl login' first")
+		return err
 	}
 
 	req.SetAuthToken(token)

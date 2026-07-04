@@ -1,10 +1,11 @@
 package auth
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
-	
+
 	"github.com/zalando/go-keyring"
 )
 
@@ -13,24 +14,44 @@ const (
 	account = "default"
 )
 
-// StoreToken stores the access token securely in the system keychain
+// Tokens holds the Supabase session credentials persisted between runs.
+type Tokens struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+// StoreTokens stores the session tokens securely in the system keychain
 // Falls back to file storage if keyring is unavailable (e.g., no D-Bus)
-func StoreToken(token string) error {
-	err := keyring.Set(service, account, token)
+func StoreTokens(tokens Tokens) error {
+	payload, err := json.Marshal(tokens)
+	if err != nil {
+		return err
+	}
+	err = keyring.Set(service, account, string(payload))
 	if err != nil && isKeyringUnavailable(err) {
-		return storeTokenFile(token)
+		return storeTokenFile(string(payload))
 	}
 	return err
 }
 
-// GetToken retrieves the access token from the system keychain
-// Falls back to file storage if keyring is unavailable
-func GetToken() (string, error) {
-	token, err := keyring.Get(service, account)
+// GetTokens retrieves the session tokens from the system keychain
+// Falls back to file storage if keyring is unavailable.
+// Entries written by older releases hold a bare access token instead of
+// JSON; those are returned with an empty refresh token.
+func GetTokens() (Tokens, error) {
+	raw, err := keyring.Get(service, account)
 	if err != nil && isKeyringUnavailable(err) {
-		return getTokenFile()
+		raw, err = getTokenFile()
 	}
-	return token, err
+	if err != nil {
+		return Tokens{}, err
+	}
+
+	var tokens Tokens
+	if json.Unmarshal([]byte(raw), &tokens) == nil && tokens.AccessToken != "" {
+		return tokens, nil
+	}
+	return Tokens{AccessToken: raw}, nil
 }
 
 // DeleteToken removes the access token from the system keychain
@@ -45,7 +66,7 @@ func DeleteToken() error {
 
 // HasToken checks if a token exists in the keychain
 func HasToken() bool {
-	_, err := GetToken()
+	_, err := GetTokens()
 	return err == nil
 }
 
@@ -82,13 +103,13 @@ func storeTokenFile(token string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Create config directory if it doesn't exist
 	configDir := filepath.Dir(tokenPath)
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return err
 	}
-	
+
 	// Write token to file with restricted permissions
 	return os.WriteFile(tokenPath, []byte(token), 0600)
 }
@@ -99,12 +120,12 @@ func getTokenFile() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	data, err := os.ReadFile(tokenPath)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return string(data), nil
 }
 
@@ -114,7 +135,7 @@ func deleteTokenFile() error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Ignore error if file doesn't exist
 	err = os.Remove(tokenPath)
 	if os.IsNotExist(err) {

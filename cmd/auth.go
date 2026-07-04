@@ -34,19 +34,19 @@ var authTokenCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		token := args[0]
-		
+
 		if len(token) < 10 {
 			fmt.Println(styles.ErrorStyle.Render(" INVALID TOKEN "))
 			fmt.Println(styles.BoxStyle.Render("Token must be at least 10 characters long"))
 			return
 		}
-		
-		err := auth.StoreToken(token)
+
+		err := auth.StoreTokens(auth.Tokens{AccessToken: token})
 		if err != nil {
 			fmt.Println(styles.ErrorStyle.Render(" STORAGE ERROR "), err)
 			return
 		}
-		
+
 		fmt.Println(styles.SuccessStyle.Render(" TOKEN STORED! "))
 		fmt.Println(styles.BoxStyle.Render("Authentication token stored successfully!\nYou can now use sprintctl commands."))
 	},
