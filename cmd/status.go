@@ -16,6 +16,7 @@ var statusCmd = &cobra.Command{
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		apiClient := mtcapi.New(viper.GetString("api_base_url"))
+		jsonOut, _ := cmd.Flags().GetBool("json")
 
 		var lessonToken string
 		if len(args) > 0 {
@@ -23,21 +24,34 @@ var statusCmd = &cobra.Command{
 		} else {
 			activeLesson, err := apiClient.GetActiveLesson()
 			if err != nil {
+				if jsonOut {
+					exitJSONError(fmt.Errorf("could not detect an active lab: %w", err))
+				}
 				fmt.Println(styles.ErrorStyle.Render(" NO ACTIVE LAB "))
 				fmt.Println(styles.BoxStyle.Render("Could not detect an active lab.\n\nOpen a lab in the UI, or pass a token explicitly:\n  sprintctl status <lesson-token>"))
 				return
 			}
 			lessonToken = activeLesson.LessonToken
-			fmt.Printf("\n📚 Auto-detected lab: %s\n", activeLesson.Title)
-			if activeLesson.CourseTitle != "" {
-				fmt.Printf("   Course: %s\n", activeLesson.CourseTitle)
+			if !jsonOut {
+				fmt.Printf("\n📚 Auto-detected lab: %s\n", activeLesson.Title)
+				if activeLesson.CourseTitle != "" {
+					fmt.Printf("   Course: %s\n", activeLesson.CourseTitle)
+				}
+				fmt.Println()
 			}
-			fmt.Println()
 		}
 
 		lesson, err := apiClient.GetLesson(lessonToken)
 		if err != nil {
+			if jsonOut {
+				exitJSONError(err)
+			}
 			fmt.Println(styles.ErrorStyle.Render(" API ERROR "), err)
+			return
+		}
+
+		if jsonOut {
+			printLessonJSON(lessonToken, lesson)
 			return
 		}
 
@@ -57,4 +71,5 @@ var statusCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(statusCmd)
+	statusCmd.Flags().Bool("json", false, "Output machine-readable JSON instead of the interactive report")
 }

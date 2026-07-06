@@ -17,6 +17,25 @@ type Lesson struct {
 	Tasks       []Task    `json:"tasks"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	// Enrichment served by newer servers for IDE/ticket surfaces.
+	// Zero-valued when talking to older servers — callers must not require them.
+	Title            string           `json:"title,omitempty"`
+	LabContent       string           `json:"lab_content,omitempty"`
+	Course           *LessonCourse    `json:"course,omitempty"`
+	HelpdeskPriority int              `json:"helpdesk_priority,omitempty"`
+	ReporterPersona  *ReporterPersona `json:"reporter_persona,omitempty"`
+}
+
+type LessonCourse struct {
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	CourseType string `json:"course_type"`
+}
+
+type ReporterPersona struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	AvatarURL   string `json:"avatar_url"`
 }
 
 type Task struct {
