@@ -18,20 +18,14 @@ var lessonCmd = &cobra.Command{
 		apiClient := mtcapi.New(viper.GetString("api_base_url"))
 		jsonOut, _ := cmd.Flags().GetBool("json")
 
-		var lessonToken string
-		if len(args) > 0 {
-			lessonToken = args[0]
-		} else {
-			activeLesson, err := apiClient.GetActiveLesson()
-			if err != nil {
-				if jsonOut {
-					exitJSONError(fmt.Errorf("could not detect an active lab: %w", err))
-				}
-				fmt.Println(styles.ErrorStyle.Render(" NO ACTIVE LAB "))
-				fmt.Println(styles.BoxStyle.Render("Could not detect an active lab.\n\nOpen a lab in the UI, or pass a token explicitly:\n  sprintctl lesson <lesson-token>"))
-				return
+		lessonToken, _, _, err := resolveLessonToken(args, apiClient)
+		if err != nil {
+			if jsonOut {
+				exitJSONError(fmt.Errorf("could not detect an active lab: %w", err))
 			}
-			lessonToken = activeLesson.LessonToken
+			fmt.Println(styles.ErrorStyle.Render(" NO ACTIVE LAB "))
+			fmt.Println(styles.BoxStyle.Render("Could not detect an active lab.\n\nOpen a lab in the UI, or pass a token explicitly:\n  sprintctl lesson <lesson-token>"))
+			return
 		}
 
 		lesson, err := apiClient.GetLesson(lessonToken)

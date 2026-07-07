@@ -22,24 +22,16 @@ var submitCmd = &cobra.Command{
 		var lessonToken string
 		apiClient := mtcapi.New(viper.GetString("api_base_url"))
 
-		if len(args) == 0 {
-			// No token provided - auto-detect active lab
-			fmt.Println("No lesson token provided. Fetching most recently accessed lab...")
-			activeLesson, err := apiClient.GetActiveLesson()
-			if err != nil {
-				fmt.Println("Error fetching active lab:", err)
-				fmt.Println("\nPlease open a lab in the UI first, or provide a lesson token explicitly:")
-				fmt.Println("  sprintctl submit <lesson-token>")
-				return
-			}
-			lessonToken = activeLesson.LessonToken
-			fmt.Printf("\n📚 Auto-detected lab: %s\n", activeLesson.Title)
-			if activeLesson.CourseTitle != "" {
-				fmt.Printf("   Course: %s\n", activeLesson.CourseTitle)
-			}
-			fmt.Println()
-		} else {
-			lessonToken = args[0]
+		token, source, activeLesson, err := resolveLessonToken(args, apiClient)
+		if err != nil {
+			fmt.Println("Error fetching active lab:", err)
+			fmt.Println("\nPlease open a lab in the UI first, or provide a lesson token explicitly:")
+			fmt.Println("  sprintctl submit <lesson-token>")
+			return
+		}
+		lessonToken = token
+		if source != tokenFromArg {
+			printDetectionBanner(source, activeLesson)
 		}
 
 		reset, _ := cmd.Flags().GetBool("reset")

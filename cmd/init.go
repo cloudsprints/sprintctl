@@ -35,20 +35,15 @@ var initCmd = &cobra.Command{
 
 		// Single lab mode - auto-detect or use provided token
 		if len(args) == 0 && !adminMode {
-			fmt.Println("No lesson token provided. Fetching most recently accessed lab...")
-			activeLesson, err := apiClient.GetActiveLesson()
+			token, source, activeLesson, err := resolveLessonToken(args, apiClient)
 			if err != nil {
 				fmt.Println("Error fetching active lab:", err)
 				fmt.Println("\nPlease open a lab in the UI first, or provide a lesson token explicitly:")
 				fmt.Println("  sprintctl init <lesson-token>")
 				return
 			}
-			args = []string{activeLesson.LessonToken}
-			fmt.Printf("\n📚 Auto-detected lab: %s\n", activeLesson.Title)
-			if activeLesson.CourseTitle != "" {
-				fmt.Printf("   Course: %s\n", activeLesson.CourseTitle)
-			}
-			fmt.Println()
+			args = []string{token}
+			printDetectionBanner(source, activeLesson)
 		}
 
 		if len(args) == 0 {

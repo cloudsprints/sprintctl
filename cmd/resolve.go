@@ -1,0 +1,60 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/cloudsprints/sprintctl/internal/mtcapi"
+	"github.com/cloudsprints/sprintctl/internal/types"
+)
+
+// machineLessonEnv is set on CloudSprints cloud IDE machines by the lab
+// workspace launcher: it names the user_lesson whose credentials are
+// injected into this machine. When present it is ground truth for "the
+// active lab" — the API's click-history detection can lag behind what this
+// machine is actually provisioned for.
+const machineLessonEnv = "CLOUDSPRINTS_USER_LESSON_ID"
+
+type tokenSource int
+
+const (
+	tokenFromArg tokenSource = iota
+	tokenFromMachine
+	tokenFromAPI
+)
+
+// resolveLessonToken picks the lesson to operate on: an explicit argument
+// wins, then the machine's injected lesson (cloud IDE), then the API's
+// active-lab detection. activeLesson is non-nil only on the API path.
+func resolveLessonToken(args []string, apiClient *mtcapi.MtcApiClient) (string, tokenSource, *types.ActiveLesson, error) {
+	if len(args) > 0 {
+		return args[0], tokenFromArg, nil, nil
+	}
+
+	if token := os.Getenv(machineLessonEnv); mtcapi.ValidCUID(token) {
+		return token, tokenFromMachine, nil, nil
+	}
+
+	activeLesson, err := apiClient.GetActiveLesson()
+	if err != nil {
+		return "", tokenFromAPI, nil, fmt.Errorf("fetching active lab: %w", err)
+	}
+	return activeLesson.LessonToken, tokenFromAPI, &activeLesson, nil
+}
+
+// printDetectionBanner explains where the auto-detected lab came from so a
+// surprising target is visible before anything runs against it.
+func printDetectionBanner(source tokenSource, activeLesson *types.ActiveLesson) {
+	if source == tokenFromMachine {
+		fmt.Println("\n📚 Using the lab assigned to this workspace")
+		fmt.Println()
+		return
+	}
+	if activeLesson != nil {
+		fmt.Printf("\n📚 Auto-detected lab: %s\n", activeLesson.Title)
+		if activeLesson.CourseTitle != "" {
+			fmt.Printf("   Course: %s\n", activeLesson.CourseTitle)
+		}
+		fmt.Println()
+	}
+}
