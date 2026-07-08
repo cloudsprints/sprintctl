@@ -7,6 +7,25 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/types"
 )
 
+// EndLab tears down the workspace for a lab session (student-triggered "End
+// lab"). Auth'd so the server can verify the caller owns the session. Does not
+// grade — the student submits first if they want a grade.
+func (c *MtcApiClient) EndLab(userLessonID string) error {
+	req := c.httpClient.R()
+	if err := c.ensureAuthenticated(req); err != nil {
+		return err
+	}
+
+	res, err := req.Post("/labs/" + userLessonID + "/end")
+	if err != nil {
+		return err
+	}
+	if res.IsError() {
+		return fmt.Errorf("API error: %s", res.String())
+	}
+	return nil
+}
+
 // GetLabInfo fetches information about a lab
 func (c *MtcApiClient) GetLabInfo(userLessonID string) (types.LabInfo, error) {
 	res, err := c.httpClient.R().

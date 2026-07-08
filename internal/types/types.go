@@ -24,6 +24,13 @@ type Lesson struct {
 	Course           *LessonCourse    `json:"course,omitempty"`
 	HelpdeskPriority int              `json:"helpdesk_priority,omitempty"`
 	ReporterPersona  *ReporterPersona `json:"reporter_persona,omitempty"`
+	// Workspace time-limit surface for the IDE countdown. Pointers so a null
+	// deadline (uncapped) is distinguishable from an older server that omits
+	// them; both mean "no countdown". SecondsRemaining is server-computed
+	// (never a local clock).
+	ExpiresAt        *time.Time `json:"expires_at,omitempty"`
+	SecondsRemaining *int       `json:"seconds_remaining,omitempty"`
+	TimeLimitMinutes *int       `json:"time_limit_minutes,omitempty"`
 }
 
 type LessonCourse struct {
