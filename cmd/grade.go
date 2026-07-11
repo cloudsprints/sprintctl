@@ -39,6 +39,7 @@ var gradeCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(gradeCmd)
 	gradeCmd.Flags().BoolP("reset", "r", false, "Reset the lesson tasks")
+	gradeCmd.Flags().BoolP("yes", "y", false, "Skip the confirmation prompt")
 	gradeCmd.Flags().BoolP("admin", "a", false, "Admin mode: grade using lesson_id directly (no enrollment required)")
 }
 

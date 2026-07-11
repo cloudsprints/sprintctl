@@ -55,30 +55,37 @@ var submitCmd = &cobra.Command{
 		printTasksTable(lesson.Tasks)
 		fmt.Println()
 
+		// --yes skips the interactive confirmation so the lab IDE sidebar can
+		// trigger grading with a single click (no terminal prompt to answer).
+		skipConfirm, _ := cmd.Flags().GetBool("yes")
+
 		// Run the submission flow
-		runSubmissionFlow(lessonToken, lesson, apiClient)
+		runSubmissionFlow(lessonToken, lesson, apiClient, skipConfirm)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(submitCmd)
 	submitCmd.Flags().BoolP("reset", "r", false, "Reset the lesson tasks")
+	submitCmd.Flags().BoolP("yes", "y", false, "Skip the confirmation prompt")
 }
 
-func runSubmissionFlow(lessonToken string, lesson types.Lesson, apiClient *mtcapi.MtcApiClient) {
+func runSubmissionFlow(lessonToken string, lesson types.Lesson, apiClient *mtcapi.MtcApiClient, skipConfirm bool) {
 	// Display submission info
 	fmt.Println(styles.SectionHeaderStyle.Render("🚀 SUBMIT FOR GRADING"))
 	fmt.Printf("Your lesson will be validated with %d command(s) and submitted for AI grading.\n\n", len(lesson.CliCommands))
 
-	input := confirmation.New("Submit lesson for grading?", confirmation.Yes)
-	ready, err := input.RunPrompt()
-	if err != nil {
-		fmt.Println("Error getting confirmation:", err)
-		return
-	}
-	if !ready {
-		fmt.Println(styles.WarningStyle.Render(" ABORTED "))
-		return
+	if !skipConfirm {
+		input := confirmation.New("Submit lesson for grading?", confirmation.Yes)
+		ready, err := input.RunPrompt()
+		if err != nil {
+			fmt.Println("Error getting confirmation:", err)
+			return
+		}
+		if !ready {
+			fmt.Println(styles.WarningStyle.Render(" ABORTED "))
+			return
+		}
 	}
 
 	cliCommandResults, aborted := runCommandsWithProgress(lesson.CliCommands, true)
@@ -110,7 +117,7 @@ func runSubmissionFlow(lessonToken string, lesson types.Lesson, apiClient *mtcap
 
 	fmt.Println("\nSubmitting for AI grading...")
 
-	lesson, err = apiClient.SubmitLesson(lessonToken, cliCommandResults)
+	lesson, err := apiClient.SubmitLesson(lessonToken, cliCommandResults)
 	if err != nil {
 		fmt.Println("\n" + styles.ErrorStyle.Render(" SUBMISSION ERROR "))
 		fmt.Println(err)
@@ -162,7 +169,7 @@ func runSubmissionFlow(lessonToken string, lesson types.Lesson, apiClient *mtcap
 			fmt.Println("Error getting lesson:", err)
 			return
 		}
-		runSubmissionFlow(lessonToken, fresh, apiClient)
+		runSubmissionFlow(lessonToken, fresh, apiClient, skipConfirm)
 	}
 }
 
