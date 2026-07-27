@@ -98,44 +98,57 @@ func PollDeviceAuth(appRoot string, da *DeviceAuth) error {
 	for time.Now().Before(deadline) {
 		time.Sleep(interval)
 
-		tokenHash, done, err := pollOnce(appRoot, da.DeviceCode)
+		approval, done, err := pollOnce(appRoot, da.DeviceCode)
 		if err != nil {
 			return err
 		}
 		if done {
-			return exchangeTokenHash(tokenHash)
+			// Prefer the BetterAuth session token when the server issues one:
+			// it is used directly as a bearer token with a server-side sliding
+			// expiry, so no GoTrue exchange or refresh flow is needed
+			if approval.BAToken != "" {
+				return StoreTokens(Tokens{AccessToken: approval.BAToken})
+			}
+			return exchangeTokenHash(approval.TokenHash)
 		}
 	}
 
 	return fmt.Errorf("login request expired: please run 'sprintctl login' again")
 }
 
+// deviceApproval is the payload returned once the user approves the login.
+// BAToken is only set by servers that have migrated to BetterAuth.
+type deviceApproval struct {
+	TokenHash string `json:"token_hash"`
+	BAToken   string `json:"ba_token"`
+}
+
 // pollOnce checks the request status; done is true once approval was granted
-func pollOnce(appRoot, deviceCode string) (tokenHash string, done bool, err error) {
+func pollOnce(appRoot, deviceCode string) (approval deviceApproval, done bool, err error) {
 	resp, err := postJSON(appRoot+"/api/auth/device/token", map[string]string{
 		"device_code": deviceCode,
 	})
 	if err != nil {
-		return "", false, err
+		return deviceApproval{}, false, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", false, decodeError(resp)
+		return deviceApproval{}, false, decodeError(resp)
 	}
 
 	var body struct {
-		Status    string `json:"status"`
-		TokenHash string `json:"token_hash"`
+		Status string `json:"status"`
+		deviceApproval
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return "", false, err
+		return deviceApproval{}, false, err
 	}
 
-	if body.Status == "approved" && body.TokenHash != "" {
-		return body.TokenHash, true, nil
+	if body.Status == "approved" && (body.TokenHash != "" || body.BAToken != "") {
+		return body.deviceApproval, true, nil
 	}
-	return "", false, nil
+	return deviceApproval{}, false, nil
 }
 
 // exchangeTokenHash trades the single-use token hash for a session at GoTrue

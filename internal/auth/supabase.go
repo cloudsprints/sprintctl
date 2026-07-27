@@ -86,9 +86,10 @@ func VerifyOTP(email, code string) error {
 }
 
 // Logout revokes the session server-side (best effort) and removes the
-// stored tokens
+// stored tokens. Opaque BetterAuth tokens have no GoTrue session to revoke,
+// so for those only the local keychain entry is cleared.
 func Logout() error {
-	if tokens, err := GetTokens(); err == nil && tokens.AccessToken != "" {
+	if tokens, err := GetTokens(); err == nil && tokens.AccessToken != "" && isJWT(tokens.AccessToken) {
 		// Ignore errors: the token may already be expired or revoked, and
 		// local cleanup should proceed regardless
 		_ = NewClient().WithToken(tokens.AccessToken).Logout()

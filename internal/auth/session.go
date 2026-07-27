@@ -20,6 +20,13 @@ func AccessToken() (string, error) {
 		return "", fmt.Errorf("authentication required: please run 'sprintctl login' first")
 	}
 
+	// Opaque BetterAuth session tokens carry no client-readable expiry and
+	// are renewed server-side on use (sliding expiry), so they are returned
+	// as-is with no refresh flow
+	if !isJWT(tokens.AccessToken) {
+		return tokens.AccessToken, nil
+	}
+
 	if !tokenExpiringSoon(tokens.AccessToken) {
 		return tokens.AccessToken, nil
 	}
@@ -42,6 +49,12 @@ func AccessToken() (string, error) {
 	}
 
 	return refreshed.AccessToken, nil
+}
+
+// isJWT reports whether the token looks like a three-part JWT (as issued by
+// Supabase GoTrue). Opaque BetterAuth session tokens contain no dots.
+func isJWT(token string) bool {
+	return len(strings.Split(token, ".")) == 3
 }
 
 // tokenExpiringSoon reports whether the JWT expires within expiryLeeway.
