@@ -40,7 +40,7 @@ var initCmd = &cobra.Command{
 				fmt.Println("Error fetching active lab:", err)
 				fmt.Println("\nPlease open a lab in the UI first, or provide a lesson token explicitly:")
 				fmt.Println("  sprintctl init <lesson-token>")
-				return
+				os.Exit(1)
 			}
 			args = []string{token}
 			printDetectionBanner(source, activeLesson)
@@ -50,7 +50,7 @@ var initCmd = &cobra.Command{
 			fmt.Println("Error: lesson-token is required (or use --project)")
 			fmt.Println("Usage: sprintctl init <lesson-token>")
 			fmt.Println("       sprintctl init --project <project-id>")
-			return
+			os.Exit(1)
 		}
 
 		lessonToken := args[0]
@@ -66,7 +66,7 @@ var initCmd = &cobra.Command{
 			lessonInfo, err := apiClient.GetAdminLessonInfo(lessonToken)
 			if err != nil {
 				fmt.Printf("Error getting lesson information: %s\n", err)
-				return
+				os.Exit(1)
 			}
 			labTitle = lessonInfo.Title
 			fmt.Printf("Initializing lab: %s\n", labTitle)
@@ -76,7 +76,7 @@ var initCmd = &cobra.Command{
 			files, filesErr = apiClient.GetAdminLabFiles(lessonToken)
 			if filesErr != nil {
 				fmt.Printf("Error getting lab files: %s\n", filesErr)
-				return
+				os.Exit(1)
 			}
 		} else {
 			// Normal mode: use user_lesson_id
@@ -84,7 +84,7 @@ var initCmd = &cobra.Command{
 			labInfo, err := apiClient.GetLabInfo(lessonToken)
 			if err != nil {
 				fmt.Printf("Error getting lab information: %s\n", err)
-				return
+				os.Exit(1)
 			}
 			labTitle = labInfo.Title
 			fmt.Printf("Initializing lab: %s\n", labTitle)
@@ -99,7 +99,7 @@ var initCmd = &cobra.Command{
 			}
 			if filesErr != nil {
 				fmt.Printf("Error getting lab files: %s\n", filesErr)
-				return
+				os.Exit(1)
 			}
 		}
 
@@ -116,7 +116,7 @@ var initCmd = &cobra.Command{
 		if _, err := os.Stat(labDir); os.IsNotExist(err) {
 			if err := os.MkdirAll(labDir, 0755); err != nil {
 				fmt.Printf("Error creating directory %s: %s\n", labDir, err)
-				return
+				os.Exit(1)
 			}
 		}
 
@@ -127,7 +127,7 @@ var initCmd = &cobra.Command{
 		if failed > 0 {
 			fmt.Printf("\n%d of %d files failed to download.\n", failed, len(files))
 			fmt.Println("Re-run 'sprintctl init' to retry.")
-			return
+			os.Exit(1)
 		}
 
 		fmt.Printf("\nLab initialized successfully in %s\n", labDir)
