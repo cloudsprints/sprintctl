@@ -57,7 +57,11 @@ func initConfig() {
 
 		if err := viper.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-				viper.Set("api_base_url", "https://cloudsprints.com/api/v1")
+				// SetDefault, NOT Set: Set outranks env vars, which made every FIRST
+				// sprintctl run in a fresh box ignore SPRINTCTL_API_BASE_URL and
+				// phone prod (dev/staging labs only ever pulled files by the accident
+				// of cloned userLesson ids existing in prod). Defaults rank below env.
+				viper.SetDefault("api_base_url", "https://cloudsprints.com/api/v1")
 				err := viper.SafeWriteConfigAs(filepath.Join(configDir, "config.json"))
 				cobra.CheckErr(err)
 			} else {
