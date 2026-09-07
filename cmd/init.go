@@ -130,8 +130,21 @@ var initCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Remember which lab this directory is, so `sprintctl grade` run from
+		// inside it targets this lab regardless of what was clicked last in
+		// the UI. Admin mode pulls by lesson id (not a user_lesson) — no marker.
+		if !adminMode {
+			if err := writeLabMarker(labDir, labMarker{
+				UserLessonID: lessonToken,
+				Title:        labTitle,
+				APIBaseURL:   viper.GetString("api_base_url"),
+			}); err != nil {
+				fmt.Printf("Warning: could not write %s: %s\n", labMarkerFile, err)
+			}
+		}
+
 		fmt.Printf("\nLab initialized successfully in %s\n", labDir)
-		fmt.Println("You can now cd into the directory and start working on the lab.")
+		fmt.Println("You can now cd into the directory and run 'sprintctl grade' from there.")
 	},
 }
 

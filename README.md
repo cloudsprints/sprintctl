@@ -104,3 +104,11 @@ Key dependencies include:
 - `github.com/go-resty/resty/v2` - HTTP client
 
 For a complete list of dependencies, see: [go.mod](go.mod)
+
+### Grading from your own terminal
+
+`sprintctl init` writes a `.cloudsprints-lab.json` marker into the lab
+directory. Run `sprintctl grade` (or `status` / `lesson`) from inside that
+directory and it targets that lab, regardless of what you last opened in the
+UI. Outside an initialized directory the CLI falls back to the lab you most
+recently opened or launched; pass the lesson token explicitly to override.

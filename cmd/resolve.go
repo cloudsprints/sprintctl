@@ -22,12 +22,14 @@ type tokenSource int
 const (
 	tokenFromArg tokenSource = iota
 	tokenFromMachine
+	tokenFromDir
 	tokenFromAPI
 )
 
 // resolveLessonToken picks the lesson to operate on: an explicit argument
-// wins, then the machine's injected lesson (cloud IDE), then the API's
-// active-lab detection. activeLesson is non-nil only on the API path.
+// wins, then the machine's injected lesson (cloud IDE), then the lab marker
+// `sprintctl init` left in the current directory (or a parent), then the
+// API's active-lab detection. activeLesson is non-nil only on the API path.
 func resolveLessonToken(args []string, apiClient *mtcapi.MtcApiClient) (string, tokenSource, *types.ActiveLesson, error) {
 	if len(args) > 0 {
 		return args[0], tokenFromArg, nil, nil
@@ -35,6 +37,10 @@ func resolveLessonToken(args []string, apiClient *mtcapi.MtcApiClient) (string, 
 
 	if token := os.Getenv(machineLessonEnv); mtcapi.ValidCUID(token) {
 		return token, tokenFromMachine, nil, nil
+	}
+
+	if marker := findLabMarker(); marker != nil {
+		return marker.UserLessonID, tokenFromDir, nil, nil
 	}
 
 	activeLesson, err := apiClient.GetActiveLesson()
@@ -49,6 +55,15 @@ func resolveLessonToken(args []string, apiClient *mtcapi.MtcApiClient) (string, 
 func printDetectionBanner(source tokenSource, activeLesson *types.ActiveLesson) {
 	if source == tokenFromMachine {
 		fmt.Println("\n📚 Using the lab assigned to this workspace")
+		fmt.Println()
+		return
+	}
+	if source == tokenFromDir {
+		if marker := findLabMarker(); marker != nil && marker.Title != "" {
+			fmt.Printf("\n📚 Using the lab initialized in this directory: %s\n", marker.Title)
+		} else {
+			fmt.Println("\n📚 Using the lab initialized in this directory")
+		}
 		fmt.Println()
 		return
 	}
