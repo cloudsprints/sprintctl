@@ -14,10 +14,11 @@ const (
 	account = "default"
 )
 
-// Tokens holds the Supabase session credentials persisted between runs.
+// Tokens holds the session credentials persisted between runs. AccessToken is
+// an opaque BetterAuth session token; older releases also stored a refresh
+// token, which is ignored when read back.
 type Tokens struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+	AccessToken string `json:"access_token"`
 }
 
 // StoreTokens stores the session tokens securely in the system keychain
@@ -37,7 +38,7 @@ func StoreTokens(tokens Tokens) error {
 // GetTokens retrieves the session tokens from the system keychain
 // Falls back to file storage if keyring is unavailable.
 // Entries written by older releases hold a bare access token instead of
-// JSON; those are returned with an empty refresh token.
+// JSON; those are returned as-is.
 func GetTokens() (Tokens, error) {
 	raw, err := keyring.Get(service, account)
 	if err != nil && isKeyringUnavailable(err) {

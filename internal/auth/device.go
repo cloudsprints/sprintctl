@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/supabase-community/gotrue-go/types"
 )
 
 // ErrDeviceFlowUnsupported indicates the server doesn't expose the device
@@ -86,8 +84,8 @@ func StartDeviceAuth(appRoot string) (*DeviceAuth, error) {
 	return &da, nil
 }
 
-// PollDeviceAuth waits for the browser approval, then exchanges the issued
-// token hash for a session and stores it
+// PollDeviceAuth waits for the browser approval, then stores the session
+// token the app minted for this login
 func PollDeviceAuth(appRoot string, da *DeviceAuth) error {
 	interval := time.Duration(da.Interval) * time.Second
 	if interval <= 0 {
@@ -98,76 +96,46 @@ func PollDeviceAuth(appRoot string, da *DeviceAuth) error {
 	for time.Now().Before(deadline) {
 		time.Sleep(interval)
 
-		approval, done, err := pollOnce(appRoot, da.DeviceCode)
+		token, done, err := pollOnce(appRoot, da.DeviceCode)
 		if err != nil {
 			return err
 		}
 		if done {
-			// Prefer the BetterAuth session token when the server issues one:
-			// it is used directly as a bearer token with a server-side sliding
-			// expiry, so no GoTrue exchange or refresh flow is needed
-			if approval.BAToken != "" {
-				return StoreTokens(Tokens{AccessToken: approval.BAToken})
-			}
-			return exchangeTokenHash(approval.TokenHash)
+			return StoreTokens(Tokens{AccessToken: token})
 		}
 	}
 
 	return fmt.Errorf("login request expired: please run 'sprintctl login' again")
 }
 
-// deviceApproval is the payload returned once the user approves the login.
-// BAToken is only set by servers that have migrated to BetterAuth.
-type deviceApproval struct {
-	TokenHash string `json:"token_hash"`
-	BAToken   string `json:"ba_token"`
-}
-
 // pollOnce checks the request status; done is true once approval was granted
-func pollOnce(appRoot, deviceCode string) (approval deviceApproval, done bool, err error) {
+// and the app has handed over the session token
+func pollOnce(appRoot, deviceCode string) (token string, done bool, err error) {
 	resp, err := postJSON(appRoot+"/api/auth/device/token", map[string]string{
 		"device_code": deviceCode,
 	})
 	if err != nil {
-		return deviceApproval{}, false, err
+		return "", false, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return deviceApproval{}, false, decodeError(resp)
+		return "", false, decodeError(resp)
 	}
 
 	var body struct {
-		Status string `json:"status"`
-		deviceApproval
+		Status  string `json:"status"`
+		BaToken string `json:"ba_token"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return deviceApproval{}, false, err
+		return "", false, err
 	}
 
-	if body.Status == "approved" && (body.TokenHash != "" || body.BAToken != "") {
-		return body.deviceApproval, true, nil
+	if body.Status == "approved" {
+		if body.BaToken == "" {
+			return "", false, fmt.Errorf("login was approved but no session token was returned")
+		}
+		return body.BaToken, true, nil
 	}
-	return deviceApproval{}, false, nil
-}
-
-// exchangeTokenHash trades the single-use token hash for a session at GoTrue
-// and stores the resulting tokens
-func exchangeTokenHash(tokenHash string) error {
-	response, err := NewClient().Verify(types.VerifyRequest{
-		Type:       types.VerificationTypeMagiclink,
-		Token:      tokenHash,
-		RedirectTo: "https://cloudsprints.com", // Required but not used for CLI
-	})
-	if err != nil {
-		return err
-	}
-	if response.Error != "" || response.AccessToken == "" {
-		return fmt.Errorf("verification failed: %s %s", response.Error, response.ErrorDescription)
-	}
-
-	return StoreTokens(Tokens{
-		AccessToken:  response.AccessToken,
-		RefreshToken: response.RefreshToken,
-	})
+	return "", false, nil
 }

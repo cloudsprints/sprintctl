@@ -23,6 +23,9 @@ var lessonCmd = &cobra.Command{
 			if jsonOut {
 				exitJSONError(fmt.Errorf("could not detect an active lab: %w", err))
 			}
+			if printAuthError(err) {
+				return
+			}
 			fmt.Println(styles.ErrorStyle.Render(" NO ACTIVE LAB "))
 			fmt.Println(styles.BoxStyle.Render("Could not detect an active lab.\n\nOpen a lab in the UI, or pass a token explicitly:\n  sprintctl lesson <lesson-token>"))
 			return

@@ -3,8 +3,10 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/cloudsprints/sprintctl/internal/mtcapi"
+	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/cloudsprints/sprintctl/internal/types"
 )
 
@@ -57,4 +59,16 @@ func printDetectionBanner(source tokenSource, activeLesson *types.ActiveLesson) 
 		}
 		fmt.Println()
 	}
+}
+
+// printAuthError reports a missing or stale login and returns true when err
+// is an auth error — a signed-out user must not be told "no active lab" and
+// sent hunting for a lab they already opened.
+func printAuthError(err error) bool {
+	if err == nil || !strings.Contains(err.Error(), "sprintctl login") {
+		return false
+	}
+	fmt.Println(styles.ErrorStyle.Render(" NOT AUTHENTICATED "))
+	fmt.Println(styles.BoxStyle.Render(err.Error()))
+	return true
 }

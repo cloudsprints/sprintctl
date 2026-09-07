@@ -127,7 +127,7 @@ func runOTPLogin(appRoot string, args []string) bool {
 
 	// Verify OTP
 	fmt.Println(styles.InfoStyle.Render(" VERIFYING CODE "))
-	err = auth.VerifyOTP(email, code)
+	err = auth.VerifyOTP(email, code, proxyURL)
 	if err != nil {
 		fmt.Println(styles.ErrorStyle.Render(" AUTHENTICATION FAILED "), err)
 		return false
