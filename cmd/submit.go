@@ -9,7 +9,6 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/types"
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var submitCmd = &cobra.Command{
@@ -20,7 +19,7 @@ var submitCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Determine lesson token
 		var lessonToken string
-		apiClient := mtcapi.New(viper.GetString("api_base_url"))
+		apiClient := mtcapi.New(apiBaseURL())
 
 		token, source, activeLesson, err := resolveLessonToken(args, apiClient)
 		if err != nil {

@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/cloudsprints/sprintctl/internal/auth"
 	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var logoutCmd = &cobra.Command{
@@ -21,7 +19,7 @@ var logoutCmd = &cobra.Command{
 			return
 		}
 
-		appRoot := strings.TrimSuffix(viper.GetString("api_base_url"), "/api/v1")
+		appRoot := appRoot()
 		err := auth.Logout(appRoot)
 		if err != nil {
 			fmt.Println(styles.ErrorStyle.Render(" LOGOUT ERROR "), err)

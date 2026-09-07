@@ -12,7 +12,6 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/mtcapi"
 	"github.com/cloudsprints/sprintctl/internal/types"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var initCmd = &cobra.Command{
@@ -25,7 +24,7 @@ var initCmd = &cobra.Command{
 		adminMode, _ := cmd.Flags().GetBool("admin")
 		projectID, _ := cmd.Flags().GetString("project")
 
-		apiClient := mtcapi.New(viper.GetString("api_base_url"))
+		apiClient := mtcapi.New(apiBaseURL())
 
 		// Project mode: download all labs from a project
 		if projectID != "" {

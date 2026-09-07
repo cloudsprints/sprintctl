@@ -7,7 +7,6 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/cloudsprints/sprintctl/internal/tui"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var statusCmd = &cobra.Command{
@@ -15,7 +14,7 @@ var statusCmd = &cobra.Command{
 	Short: "Show the status of a lesson (auto-detects the active lab if no token is provided)",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		apiClient := mtcapi.New(viper.GetString("api_base_url"))
+		apiClient := mtcapi.New(apiBaseURL())
 		jsonOut, _ := cmd.Flags().GetBool("json")
 
 		lessonToken, source, activeLesson, err := resolveLessonToken(args, apiClient)

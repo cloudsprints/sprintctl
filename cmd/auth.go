@@ -20,10 +20,10 @@ var authStatusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if auth.IsAuthenticated() {
 			fmt.Println(styles.SuccessStyle.Render(" AUTHENTICATED "))
-			fmt.Println(styles.BoxStyle.Render("You are signed in to CloudSprints.\n\nAvailable commands:\n• sprintctl submit <lesson-token>\n• sprintctl status [lesson-token]\n• sprintctl logout"))
+			fmt.Println(styles.BoxStyle.Render(envLine() + "\n\nYou are signed in to CloudSprints.\n\nAvailable commands:\n• sprintctl submit <lesson-token>\n• sprintctl status [lesson-token]\n• sprintctl logout"))
 		} else {
 			fmt.Println(styles.ErrorStyle.Render(" NOT AUTHENTICATED "))
-			fmt.Println(styles.BoxStyle.Render("You are not signed in to CloudSprints.\n\nTo authenticate:\n• Run 'sprintctl login' to sign in with OTP\n• Run 'sprintctl auth token <token>' for manual token"))
+			fmt.Println(styles.BoxStyle.Render(envLine() + "\n\nYou are not signed in to CloudSprints.\n\nTo authenticate:\n• Run 'sprintctl login' to sign in with OTP\n• Run 'sprintctl auth token <token>' for manual token"))
 		}
 	},
 }

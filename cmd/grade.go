@@ -9,7 +9,6 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/types"
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // gradeCmd handles grading - either as alias for submit or admin mode
@@ -44,7 +43,7 @@ func init() {
 }
 
 func runAdminGrading(lessonID string) {
-	apiClient := mtcapi.New(viper.GetString("api_base_url"))
+	apiClient := mtcapi.New(apiBaseURL())
 
 	fmt.Println("🔐 Admin mode: grading lesson directly...")
 

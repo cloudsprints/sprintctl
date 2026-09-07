@@ -6,7 +6,6 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/mtcapi"
 	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var lessonCmd = &cobra.Command{
@@ -15,7 +14,7 @@ var lessonCmd = &cobra.Command{
 	Args:    cobra.MaximumNArgs(1),
 	Example: "sprintctl lesson\nsprintctl lesson --json\nsprintctl lesson cm4ppz694200blze51ts1234",
 	Run: func(cmd *cobra.Command, args []string) {
-		apiClient := mtcapi.New(viper.GetString("api_base_url"))
+		apiClient := mtcapi.New(apiBaseURL())
 		jsonOut, _ := cmd.Flags().GetBool("json")
 
 		lessonToken, _, _, err := resolveLessonToken(args, apiClient)

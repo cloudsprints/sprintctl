@@ -9,10 +9,17 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-const (
-	service = "sprintctl"
-	account = "default"
-)
+const service = "sprintctl"
+
+// DefaultTokenScope is the historical, unscoped session entry (prod, and the
+// entry lab boxes seed at boot).
+const DefaultTokenScope = "default"
+
+// TokenScope selects which stored session the CLI uses — one per
+// environment, set by the root command from the resolved environment.
+var TokenScope = DefaultTokenScope
+
+func account() string { return TokenScope }
 
 // Tokens holds the session credentials persisted between runs. AccessToken is
 // an opaque BetterAuth session token; older releases also stored a refresh
@@ -28,7 +35,7 @@ func StoreTokens(tokens Tokens) error {
 	if err != nil {
 		return err
 	}
-	err = keyring.Set(service, account, string(payload))
+	err = keyring.Set(service, account(), string(payload))
 	if err != nil && isKeyringUnavailable(err) {
 		return storeTokenFile(string(payload))
 	}
@@ -40,7 +47,7 @@ func StoreTokens(tokens Tokens) error {
 // Entries written by older releases hold a bare access token instead of
 // JSON; those are returned as-is.
 func GetTokens() (Tokens, error) {
-	raw, err := keyring.Get(service, account)
+	raw, err := keyring.Get(service, account())
 	if err != nil && isKeyringUnavailable(err) {
 		raw, err = getTokenFile()
 	}
@@ -58,7 +65,7 @@ func GetTokens() (Tokens, error) {
 // DeleteToken removes the access token from the system keychain
 // Falls back to file storage if keyring is unavailable
 func DeleteToken() error {
-	err := keyring.Delete(service, account)
+	err := keyring.Delete(service, account())
 	if err != nil && isKeyringUnavailable(err) {
 		return deleteTokenFile()
 	}
@@ -95,7 +102,10 @@ func getTokenFilePath() (string, error) {
 		return "", err
 	}
 	configDir := filepath.Join(home, ".config", "sprintctl")
-	return filepath.Join(configDir, ".token"), nil
+	if TokenScope == DefaultTokenScope {
+		return filepath.Join(configDir, ".token"), nil
+	}
+	return filepath.Join(configDir, ".token-"+TokenScope), nil
 }
 
 // storeTokenFile stores the token in a file

@@ -7,7 +7,6 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/erikgeiser/promptkit/confirmation"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var endCmd = &cobra.Command{
@@ -16,7 +15,7 @@ var endCmd = &cobra.Command{
 	Args:    cobra.MaximumNArgs(1),
 	Example: "sprintctl end",
 	Run: func(cmd *cobra.Command, args []string) {
-		apiClient := mtcapi.New(viper.GetString("api_base_url"))
+		apiClient := mtcapi.New(apiBaseURL())
 
 		token, source, activeLesson, err := resolveLessonToken(args, apiClient)
 		if err != nil {

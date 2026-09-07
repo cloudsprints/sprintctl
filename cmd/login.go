@@ -11,7 +11,6 @@ import (
 	"github.com/cloudsprints/sprintctl/internal/styles"
 	"github.com/erikgeiser/promptkit/textinput"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var loginCmd = &cobra.Command{
@@ -31,7 +30,7 @@ one-time password sent to your email instead.`,
 			return
 		}
 
-		appRoot := strings.TrimSuffix(viper.GetString("api_base_url"), "/api/v1")
+		appRoot := appRoot()
 
 		// An explicit email argument implies the OTP flow, since the browser
 		// flow authenticates whoever is signed in to the browser session
@@ -138,7 +137,7 @@ func runOTPLogin(appRoot string, args []string) bool {
 
 func printLoginSuccess() {
 	fmt.Println(styles.SuccessStyle.Render(" AUTHENTICATION SUCCESS! "))
-	fmt.Println(styles.BoxStyle.Render("You can now use sprintctl to submit lessons and access your data.\n\nNext steps:\n• Run 'sprintctl submit <lesson-token>' to grade a lesson\n• Run 'sprintctl status' to view cached results"))
+	fmt.Println(styles.BoxStyle.Render(envLine() + "\n\nYou can now use sprintctl to submit lessons and access your data.\n\nNext steps:\n• Run 'sprintctl submit <lesson-token>' to grade a lesson\n• Run 'sprintctl status' to view cached results"))
 }
 
 // openBrowser opens the default browser at the given URL

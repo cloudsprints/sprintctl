@@ -47,6 +47,10 @@ func resolveLessonToken(args []string, apiClient *mtcapi.MtcApiClient) (string, 
 // printDetectionBanner explains where the auto-detected lab came from so a
 // surprising target is visible before anything runs against it.
 func printDetectionBanner(source tokenSource, activeLesson *types.ActiveLesson) {
+	// Off-prod targets are worth a reminder before anything is graded.
+	if currentEnv.Name != defaultEnv {
+		fmt.Printf("\n🌐 %s\n", envLine())
+	}
 	if source == tokenFromMachine {
 		fmt.Println("\n📚 Using the lab assigned to this workspace")
 		fmt.Println()

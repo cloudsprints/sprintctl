@@ -104,3 +104,20 @@ Key dependencies include:
 - `github.com/go-resty/resty/v2` - HTTP client
 
 For a complete list of dependencies, see: [go.mod](go.mod)
+
+### Environments
+
+sprintctl talks to production by default. To debug against staging or a local
+app:
+
+```bash
+sprintctl env             # show the current environment
+sprintctl env staging     # switch (saved to config); then `sprintctl login`
+sprintctl env local       # http://localhost:5173
+sprintctl env prod
+sprintctl --env staging lesson            # one-off override
+sprintctl --api-base-url https://host/api/v1 status   # any other host
+```
+
+Sessions are stored per environment, so switching never sends a staging
+token to production; log in once per environment.
