@@ -5,23 +5,20 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
-	"strings"
 
 	"github.com/cloudsprints/sprintctl/internal/auth"
 	"github.com/cloudsprints/sprintctl/internal/styles"
-	"github.com/erikgeiser/promptkit/textinput"
 	"github.com/spf13/cobra"
 )
 
 var loginCmd = &cobra.Command{
-	Use:   "login [email]",
+	Use:   "login",
 	Short: "Authenticate with CloudSprints",
 	Long: `Authenticate with CloudSprints.
 
-By default this opens your browser to approve the login using your existing
-CloudSprints session. Pass --otp (or an email argument) to sign in with a
-one-time password sent to your email instead.`,
-	Args: cobra.MaximumNArgs(1),
+Opens your browser to approve the login using your existing CloudSprints
+session. Sign in on the web first if you aren't already.`,
+	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check if already authenticated before asking for anything
 		if auth.IsAuthenticated() {
@@ -32,25 +29,14 @@ one-time password sent to your email instead.`,
 
 		appRoot := appRoot()
 
-		// An explicit email argument implies the OTP flow, since the browser
-		// flow authenticates whoever is signed in to the browser session
-		useOTP, _ := cmd.Flags().GetBool("otp")
-		if !useOTP && len(args) == 0 {
-			err := runDeviceLogin(appRoot)
-			if err == nil {
-				printLoginSuccess()
-				return
+		if err := runDeviceLogin(appRoot); err != nil {
+			fmt.Println(styles.ErrorStyle.Render(" LOGIN FAILED "), err)
+			if errors.Is(err, auth.ErrDeviceFlowUnsupported) {
+				fmt.Println(styles.BoxStyle.Render("This server doesn't support browser login. Check that sprintctl points at CloudSprints (see 'sprintctl env')."))
 			}
-			if !errors.Is(err, auth.ErrDeviceFlowUnsupported) {
-				fmt.Println(styles.ErrorStyle.Render(" LOGIN FAILED "), err)
-				return
-			}
-			fmt.Println(styles.InfoStyle.Render(" FALLING BACK TO EMAIL CODE LOGIN "))
+			return
 		}
-
-		if runOTPLogin(appRoot, args) {
-			printLoginSuccess()
-		}
+		printLoginSuccess()
 	},
 }
 
@@ -74,67 +60,6 @@ func runDeviceLogin(appRoot string) error {
 	return auth.PollDeviceAuth(appRoot, deviceAuth)
 }
 
-// runOTPLogin drives the email one-time-password flow; returns true on success
-func runOTPLogin(appRoot string, args []string) bool {
-	var email string
-
-	// Get email from args or prompt
-	if len(args) > 0 {
-		email = args[0]
-	} else {
-		input := textinput.New("Enter your email:")
-		input.Placeholder = "user@example.com"
-
-		var err error
-		email, err = input.RunPrompt()
-		if err != nil {
-			fmt.Printf("Error getting email: %v\n", err)
-			return false
-		}
-	}
-
-	// Validate email format (basic check)
-	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
-		fmt.Println(styles.ErrorStyle.Render(" INVALID EMAIL "))
-		fmt.Println(styles.BoxStyle.Render("Please enter a valid email address"))
-		return false
-	}
-
-	proxyURL := appRoot + "/api/auth/cli-otp"
-
-	// Request OTP
-	fmt.Println(styles.InfoStyle.Render(" SENDING OTP "))
-	fmt.Println(styles.BoxStyle.Render(fmt.Sprintf("Sending one-time password to: %s", email)))
-	err := auth.LoginWithOTP(email, proxyURL)
-	if err != nil {
-		fmt.Println(styles.ErrorStyle.Render(" OTP ERROR "), err)
-		return false
-	}
-
-	fmt.Println(styles.SuccessStyle.Render(" OTP SENT! "))
-	fmt.Println(styles.BoxStyle.Render("Check your email for the 6-digit verification code"))
-
-	// Prompt for OTP code
-	codeInput := textinput.New("Enter the 6-digit code from your email:")
-	codeInput.Placeholder = "123456"
-
-	code, err := codeInput.RunPrompt()
-	if err != nil {
-		fmt.Printf("Error getting code: %v\n", err)
-		return false
-	}
-
-	// Verify OTP
-	fmt.Println(styles.InfoStyle.Render(" VERIFYING CODE "))
-	err = auth.VerifyOTP(email, code, proxyURL)
-	if err != nil {
-		fmt.Println(styles.ErrorStyle.Render(" AUTHENTICATION FAILED "), err)
-		return false
-	}
-
-	return true
-}
-
 func printLoginSuccess() {
 	fmt.Println(styles.SuccessStyle.Render(" AUTHENTICATION SUCCESS! "))
 	fmt.Println(styles.BoxStyle.Render(envLine() + "\n\nYou can now use sprintctl to submit lessons and access your data.\n\nNext steps:\n• Run 'sprintctl submit <lesson-token>' to grade a lesson\n• Run 'sprintctl status' to view cached results"))
@@ -153,6 +78,5 @@ func openBrowser(url string) error {
 }
 
 func init() {
-	loginCmd.Flags().Bool("otp", false, "Sign in with an emailed one-time password instead of the browser")
 	rootCmd.AddCommand(loginCmd)
 }

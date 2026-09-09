@@ -11,7 +11,7 @@ import (
 )
 
 // ErrDeviceFlowUnsupported indicates the server doesn't expose the device
-// login endpoints, so the caller should fall back to the OTP flow
+// login endpoints (an app build older than this CLI)
 var ErrDeviceFlowUnsupported = errors.New("browser login is not supported by this server")
 
 // DeviceAuth describes a pending browser login request
